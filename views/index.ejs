@@ -6,10 +6,12 @@
 
     <div class="box">
         <% for(var i=0;i<myTodos.length;i++){ %>
-        <div class="item">
-            <input type="checkbox">
-            <p><%= myTodos[i] %></p>
-        </div>
+            <form action="/delete" method="POST">
+                <div class="item">
+                    <input type="checkbox" name="checkboxItem"  value="<%= myTodos[i]._id %>" onchange="this.form.submit()">
+                    <p><%= myTodos[i].todo %></p>
+                </div>
+            </form>
         <% } %>
         <form class="item"  action="/" method="post">
             <input type="text" placeholder="New Todo" name="newTodo" autocomplete="off">

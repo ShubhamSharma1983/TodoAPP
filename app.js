@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 
 const app = express();
 app.set("view engine", "ejs");
@@ -6,7 +7,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
-const myTodos = ["Buy groceries", "Finish coding EJS layout", "Walk the dog"];
+mongoose
+  .connect("mongodb://127.0.0.1:27017/todo")
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection failed:", err.message));
+
+const todoSchema = new mongoose.Schema({
+  todo: String,
+});
+
+const Todo = mongoose.model("Todo", todoSchema);
+// const firstTodo = new Todo({ todo: "Walk the dog" });
+// firstTodo.save();
+
 const workTodos = [];
 
 app.get("/", function (req, res) {
@@ -19,9 +32,16 @@ app.get("/", function (req, res) {
   //     monthName: monthName,
   //     day: day,
   //   };
-  const date = require(__dirname + "/views/date.js");
-  day = date.getDate();
-  res.render("index", { title: day, myTodos: myTodos });
+  Todo.find({})
+    .then((todos) => {
+      // console.log(todos);
+      const date = require(__dirname + "/views/date.js");
+      day = date.getDate();
+      res.render("index", { title: day, myTodos: todos });
+    })
+    .catch((err) => {
+      console.error("Failed to extract Todos:", err.message);
+    });
 });
 
 app.post("/", function (req, res) {
@@ -30,9 +50,37 @@ app.post("/", function (req, res) {
     workTodos.push(req.body.newTodo);
     res.redirect("/work");
   } else {
-    myTodos.push(req.body.newTodo);
-    res.redirect("/");
+    // myTodos.push(req.body.newTodo);
+    const newTodo = new Todo({
+      todo: req.body.newTodo,
+    });
+    newTodo
+      .save()
+      .then(() => {
+        console.log("Item added successfully.");
+        res.redirect("/");
+      })
+      .catch((err) => {
+        console.error("Failed to add new item: ", err.message);
+      });
   }
+});
+
+app.post("/delete", function (req, res) {
+  const id = req.body.checkboxItem;
+  Todo.findByIdAndDelete(id)
+    .then((item) => {
+      if (!item) {
+        console.log("Such item don't exist.");
+      } else {
+        console.log("Item deleted successfully.");
+      }
+      res.redirect("/");
+    })
+    .catch((err) => {
+      console.log("Failed to delete: ", err.message);
+      res.redirect("/");
+    });
 });
 
 app.get("/work", function (req, res) {
