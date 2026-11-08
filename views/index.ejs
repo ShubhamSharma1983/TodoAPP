@@ -5,17 +5,18 @@
     </div>
 
     <div class="box">
-        <% for(var i=0;i<myTodos.length;i++){ %>
+        <% for(var i=0;i<todoList.todos.length;i++){ %>
             <form action="/delete" method="POST">
                 <div class="item">
-                    <input type="checkbox" name="checkboxItem"  value="<%= myTodos[i]._id %>" onchange="this.form.submit()">
-                    <p><%= myTodos[i].todo %></p>
+                    <input type="checkbox" name="todoId"  value="<%= todoList.todos[i]._id %>" onchange="this.form.submit()">
+                    <p><%= todoList.todos[i].todo %></p>
                 </div>
+                <input type="hidden" name="listId" value="<%= todoList._id %>">
             </form>
         <% } %>
         <form class="item"  action="/" method="post">
-            <input type="text" placeholder="New Todo" name="newTodo" autocomplete="off">
-            <button type="submit" value=<%= title %> name="addTodo">+</button>
+            <input type="text" placeholder="New Todo" name="todoText" autocomplete="off">
+            <button type="submit" value="<%= todoList._id %>" name="listId">+</button>
         </form>
     </div>
     

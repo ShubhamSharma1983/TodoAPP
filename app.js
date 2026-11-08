@@ -1,5 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const capitalize = require("capitalize");
 
 const app = express();
 app.set("view engine", "ejs");
@@ -8,7 +9,7 @@ app.use(express.json());
 app.use(express.static("public"));
 
 mongoose
-  .connect("mongodb://127.0.0.1:27017/todo")
+  .connect("mongodb://127.0.0.1:27017/todosDB")
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection failed:", err.message));
 
@@ -16,28 +17,31 @@ const todoSchema = new mongoose.Schema({
   todo: String,
 });
 
-const Todo = mongoose.model("Todo", todoSchema);
+const listSchema = new mongoose.Schema({
+  name: String,
+  todos: [todoSchema],
+});
+
+const TodoList = mongoose.model("TodoList", listSchema);
 // const firstTodo = new Todo({ todo: "Walk the dog" });
 // firstTodo.save();
 
 const workTodos = [];
 
 app.get("/", function (req, res) {
-  //   const date = new Date();
-  //   const day = date.getDate();
-  //   const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-  //   const monthName = date.toLocaleDateString("en-US", { month: "long" });
-  //   const dateObject = {
-  //     dayName: dayName,
-  //     monthName: monthName,
-  //     day: day,
-  //   };
-  Todo.find({})
-    .then((todos) => {
-      // console.log(todos);
-      const date = require(__dirname + "/views/date.js");
-      day = date.getDate();
-      res.render("index", { title: day, myTodos: todos });
+  const listName = "Today";
+  const date = require(__dirname + "/views/date.js");
+  const day = date.getDate();
+  TodoList.findOne({ name: listName })
+    .then(async (list) => {
+      if (!list) {
+        list = new TodoList({
+          name: listName,
+          todos: [],
+        });
+        await list.save();
+      }
+      res.render("index", { title: day, todoList: list });
     })
     .catch((err) => {
       console.error("Failed to extract Todos:", err.message);
@@ -45,48 +49,79 @@ app.get("/", function (req, res) {
 });
 
 app.post("/", function (req, res) {
-  //   console.log(req.body.addTodo);
-  if (req.body.addTodo == "Work") {
-    workTodos.push(req.body.newTodo);
-    res.redirect("/work");
-  } else {
-    // myTodos.push(req.body.newTodo);
-    const newTodo = new Todo({
-      todo: req.body.newTodo,
-    });
-    newTodo
-      .save()
-      .then(() => {
-        console.log("Item added successfully.");
+  TodoList.findOne({ _id: req.body.listId })
+    .then(async (list) => {
+      if (!list) {
+        console.log("List don't exists in the collection");
         res.redirect("/");
-      })
-      .catch((err) => {
-        console.error("Failed to add new item: ", err.message);
-      });
-  }
+      } else {
+        list.todos.push({ todo: req.body.todoText });
+        await list.save();
+        if (list.name == "Today") {
+          res.redirect("/");
+        } else {
+          res.redirect("/" + list.name);
+        }
+      }
+    })
+    .catch((err) => {
+      console.error("Failed to connect to database to find list", err.message);
+      res.redirect("/");
+    });
 });
 
 app.post("/delete", function (req, res) {
-  const id = req.body.checkboxItem;
-  Todo.findByIdAndDelete(id)
-    .then((item) => {
-      if (!item) {
-        console.log("Such item don't exist.");
+  TodoList.findOne({ _id: req.body.listId })
+    .then(async (list) => {
+      if (!list) {
+        console.log("List don't exists in the collection");
+        res.redirect("/");
       } else {
-        console.log("Item deleted successfully.");
+        list.todos.pull({ _id: req.body.todoId });
+        await list.save();
+        if (list.name == "Today") {
+          res.redirect("/");
+        } else {
+          res.redirect("/" + list.name);
+        }
       }
-      res.redirect("/");
     })
     .catch((err) => {
-      console.log("Failed to delete: ", err.message);
+      console.error("Failed to connect to database to find list", err.message);
       res.redirect("/");
     });
 });
 
-app.get("/work", function (req, res) {
-  res.render("index", { title: "Work Todos", myTodos: workTodos });
+app.get("/:listName", function (req, res) {
+  var listName = req.params.listName;
+  listName = capitalize(listName);
+
+  TodoList.findOne({ name: listName })
+    .then(async (list) => {
+      if (!list) {
+        list = new TodoList({
+          name: listName,
+          todos: [],
+        });
+        await list.save();
+      }
+      res.render("index", { title: list.name, todoList: list });
+    })
+    .catch((err) => {
+      console.error("Failed to extract Todos:", err.message);
+    });
 });
 
 app.listen(8080, function () {
   console.log("Server running at 8080.");
 });
+
+//   const date = new Date();
+//   const day = date.getDate();
+//   const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+//   const monthName = date.toLocaleDateString("en-US", { month: "long" });
+//   const dateObject = {
+//     dayName: dayName,
+//     monthName: monthName,
+//     day: day,
+//   };
