@@ -113,7 +113,9 @@ app.get("/:listName", function (req, res) {
     });
 });
 
-app.listen(8080, function () {
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, function () {
   console.log("Server running at 8080.");
 });
 
